@@ -1,117 +1,89 @@
-# SAME INPUT PROGRAM
-source = [
-    "START 100 - -",
-    "- MOVER AREG ='5'",
-    "- ADD BREG ='1'",
-    "LOOP SUB CREG A",
-    "- MOVER AREG ='2'",
-    "- ADD BREG B",
-    "- SUB DREG ='3'",
-    "- MOVER BREG ='4'",
-    "- ADD CREG ='6'",
-    "A DS 1 -",
-    "B DS 2 -",
-    "- STOP - -",
-    "END - - -"
+# Using data from Pass-1 (same example)
+
+# MNT: (Index, Macro Name, MDT Index)
+MNT = [
+    (1, "INCR", 1),
+    (2, "SUM", 5)
 ]
 
-# FROM PASS-1
-symtab = {
-    "LOOP": 102,
-    "A": 109,
-    "B": 110
-}
+# MDT: (Index, Instruction)
+MDT = [
+    (1, "INCR &ARG"),
+    (2, "MOVER AREG, #1"),
+    (3, "ADD BREG, ='1'"),
+    (4, "MEND"),
+    (5, "SUM &A,&B"),
+    (6, "ADD AREG, #1"),
+    (7, "ADD BREG, #2"),
+    (8, "MEND")
+]
 
-littab = {
-    "='5'": 111,
-    "='1'": 112,
-    "='2'": 113,
-    "='3'": 114,
-    "='4'": 115,
-    "='6'": 116
-}
+# Intermediate code from Pass-1
+intermediate = [
+    "START 100",
+    "INCR A",
+    "SUM A,B",
+    "END"
+]
 
-# OPCODES
-mot = {
-    "MOVER": "01",
-    "ADD": "02",
-    "SUB": "03",
-    "MOVEM": "04",
-    "STOP": "00"
-}
+def line():
+    print("-" * 50)
 
-# REGISTER CODES
-reg = {
-    "AREG": "1",
-    "BREG": "2",
-    "CREG": "3",
-    "DREG": "4"
-}
+# PASS 2
+expanded_code = []
 
-locctr = 0
+for stmt in intermediate:
 
-print("\nPASS-2 OUTPUT (OBJECT CODE)")
-print("--------------------------------")
+    parts = stmt.split()
+    name = parts[0]
 
-for line in source:
-    parts = line.replace(",", "").split()
+    # Check if macro call
+    found = False
 
-    while len(parts) < 4:
-        parts.append("-")
+    for m in MNT:
+        if m[1] == name:
+            found = True
 
-    label, opcode, op1, op2 = parts
+            mdt_ptr = m[2]  # starting index in MDT
 
-    # START
-    if label == "START":
-        locctr = int(opcode)
-        continue
+            # Get actual arguments
+            actual_args = []
+            if len(parts) > 1:
+                actual_args = parts[1].split(',')
 
-    # END
-    if label == "END":
-        break
+            # Expand macro
+            i = mdt_ptr
 
-    # MACHINE INSTRUCTIONS
-    if opcode in mot:
+            while MDT[i-1][1] != "MEND":
 
-        opcode_val = mot[opcode]
-        reg_val = reg.get(op1, "0")
+                line_mdt = MDT[i-1][1]
 
-        # ADDRESS RESOLUTION
-        if op2.startswith("='"):
-            addr = littab.get(op2, 0)
-        elif op2 in symtab:
-            addr = symtab[op2]
-        else:
-            addr = "000"
+                # Replace #1, #2 with actual arguments
+                for index, arg in enumerate(actual_args):
+                    line_mdt = line_mdt.replace(f"#{index+1}", arg)
 
-        print(f"{locctr} -> {opcode_val} {reg_val} {addr}")
-        locctr += 1
+                # Skip header line
+                if i != mdt_ptr:
+                    expanded_code.append(line_mdt)
 
-    # DS (no machine code)
-    elif opcode == "DS":
-        locctr += int(op1)
+                i += 1
 
-    # DC
-    elif opcode == "DC":
-        print(f"{locctr} -> 00 0 {op1}")
-        locctr += 1
+            break
 
-    # STOP
-    elif opcode == "STOP":
-        print(f"{locctr} -> 00 0 000")
-        locctr += 1
+    # If not macro → keep as it is
+    if not found:
+        expanded_code.append(stmt)
 
 
-# PRINT SYMBOL TABLE
-print("\nSYMBOL TABLE")
-print("--------------------")
-print("Label\tAddress")
-for k, v in symtab.items():
-    print(f"{k}\t{v}")
+# OUTPUT
+print("\n===== PASS-2 OF TWO PASS MACRO PROCESSOR =====")
 
-# PRINT LITERAL TABLE
-print("\nLITERAL TABLE")
-print("--------------------")
-print("Literal\tAddress")
-for k, v in littab.items():
-    print(f"{k}\t{v}")
+print("\nINTERMEDIATE CODE:")
+line()
+for s in intermediate:
+    print(s)
+
+print("\nEXPANDED SOURCE CODE:")
+line()
+for s in expanded_code:
+    print(s)
