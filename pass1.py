@@ -1,111 +1,128 @@
-# INPUT PROGRAM (your given input)
+# INPUT PROGRAM
 source = [
-    "START 100 - -",
-    "- MOVER AREG ='5'",
-    "- ADD BREG ='1'",
-    "LOOP SUB CREG A",
-    "- MOVER AREG ='2'",
-    "- ADD BREG B",
-    "- SUB DREG ='3'",
-    "- MOVER BREG ='4'",
-    "- ADD CREG ='6'",
-    "A DS 1 -",
-    "B DS 2 -",
-    "- STOP - -",
-    "END - - -"
+    "MACRO",
+    "INCR &ARG",
+    "MOVER AREG, &ARG",
+    "ADD BREG, ='1'",
+    "MEND",
+    "MACRO",
+    "SUM &A,&B",
+    "ADD AREG, &A",
+    "ADD BREG, &B",
+    "MEND",
+    "START 100",
+    "INCR A",
+    "SUM A,B",
+    "END"
 ]
 
-symtab = {}
-littab = {}
+# TABLES
+MNT = []
+MDT = []
+ALA = []
 
-# MOT
-mot = {
-    "MOVER": 1,
-    "ADD": 2,
-    "SUB": 3,
-    "MOVEM": 4,
-    "STOP": 5
-}
+MNTC = 1
+MDTC = 1
 
-# POT
-pot = {
-    "START": 1,
-    "END": 2,
-    "DS": 3,
-    "DC": 4
-}
+def line():
+    print("-" * 50)
 
-locctr = 0
-start_addr = 0
+intermediate = []
+i = 0
 
-print("INTERMEDIATE CODE")
-print("--------------------------------")
+# PASS 1
+while i < len(source):
 
-for line in source:
-    parts = line.replace(",", "").split()
+    current = source[i].strip()
 
-    # Ensure 4 fields
-    while len(parts) < 4:
-        parts.append("-")
-
-    label, opcode, op1, op2 = parts
-
-    # START
-    if label == "START":
-        locctr = int(opcode)
-        start_addr = locctr
-        print(f"(AD,01) (C,{locctr})")
+    if current == "":
+        i += 1
         continue
 
-    # END
-    if label == "END":
-        print("(AD,02)")
-        break
+    # MACRO START
+    if current == "MACRO":
 
-    # SYMBOL TABLE
-    if label != "-":
-        symtab[label] = locctr
+        i += 1
+        header = source[i].strip()
+        parts = header.split()
 
-    # LITERAL TABLE
-    if op2.startswith("='"):
-        if op2 not in littab:
-            littab[op2] = None
+        # Identify macro name & arguments
+        macro_name = parts[0]
+        args = parts[1:] if len(parts) > 1 else []
 
-    # DS
-    if opcode == "DS":
-        print(f"{locctr} (DL,01) (C,{op1})")
-        locctr += int(op1)
+        # Add to MNT
+        MNT.append((MNTC, macro_name, MDTC))
+        MNTC += 1
 
-    # DC
-    elif opcode == "DC":
-        print(f"{locctr} (DL,02) (C,{op1})")
-        locctr += 1
+        # Fill ALA
+        ALA.clear()
+        for arg in args:
+            for a in arg.split(','):
+                ALA.append(a.strip())
 
-    # STOP
-    elif opcode == "STOP":
-        print(f"{locctr} (IS,05)")
-        locctr += 1
+        # Store header in MDT
+        MDT.append((MDTC, header))
+        MDTC += 1
 
-    # MACHINE INSTRUCTION
+        i += 1
+
+        # Read macro body
+        while source[i].strip() != "MEND":
+
+            body = source[i].strip()
+
+            # Replace arguments with positional notation
+            for index, arg in enumerate(ALA):
+                body = body.replace(arg, f"#{index+1}")
+
+            MDT.append((MDTC, body))
+            MDTC += 1
+
+            i += 1
+
+        # Store MEND
+        MDT.append((MDTC, "MEND"))
+        MDTC += 1
+
     else:
-        print(f"{locctr} (IS,{mot.get(opcode,0):02d}) {op1} {op2}")
-        locctr += 1
+        # Normal statements → Intermediate code
+        intermediate.append(current)
+
+    i += 1
 
 
-# ASSIGN LITERAL ADDRESSES
-for lit in littab:
-    littab[lit] = locctr
-    locctr += 1
+# OUTPUT
+print("\n===== PASS-1 OF TWO PASS MACRO PROCESSOR =====")
 
-# OUTPUTS
-print("\nSYMBOL TABLE")
-print("Label\tAddress")
-for k, v in symtab.items():
-    print(k, "\t", v)
+print("\nSOURCE PROGRAM:")
+line()
+for s in source:
+    print(s)
 
-print("\nLITERAL TABLE")
-print("Literal\tAddress")
-for k, v in littab.items():
-    print(k, "\t", v)
+print("\nINTERMEDIATE CODE:")
+line()
+for s in intermediate:
+    print(s)
 
-print("\nPROGRAM LENGTH =", locctr - start_addr)
+print("\nMNT (MACRO NAME TABLE):")
+line()
+print("Index\tMacro Name\tMDT Index")
+for m in MNT:
+    print(m[0], "\t", m[1], "\t\t", m[2])
+
+print("\nMDT (MACRO DEFINITION TABLE):")
+line()
+print("Index\tCard")
+for m in MDT:
+    print(m[0], "\t", m[1])
+
+print("\nALA (ARGUMENT LIST ARRAY):")
+line()
+print("Index\tArgument")
+for i, a in enumerate(ALA, start=1):
+    print(i, "\t", a)
+
+print("\nCOUNTERS:")
+line()
+print("MNTC =", MNTC - 1)
+print("MDTC =", MDTC - 1)
