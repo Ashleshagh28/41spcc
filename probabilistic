@@ -1,0 +1,31 @@
+% Prior Probabilities
+% P(Weather)
+prior(sunny, 0.7).
+prior(rainy, 0.3).
+
+% Likelihood Probabilities
+
+% P(Cloudy | Weather)
+likelihood(cloudy, sunny, 0.2).
+likelihood(cloudy, rainy, 0.8).
+
+% Evidence Probability
+% P(Cloudy)
+
+evidence(cloudy, P) :-
+    prior(sunny, Ps),
+    prior(rainy, Pr),
+    likelihood(cloudy, sunny, Ls),
+    likelihood(cloudy, rainy, Lr),
+    P is (Ls * Ps) + (Lr * Pr).
+
+% Posterior Probability
+% P(Weather | Cloudy)
+posterior(Weather, cloudy, Posterior) :-
+    prior(Weather, Prior),
+    likelihood(cloudy, Weather, Likelihood),
+    evidence(cloudy, Evidence),
+    Posterior is (Likelihood * Prior) / Evidence.
+
+
+
