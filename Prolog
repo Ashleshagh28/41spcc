@@ -1,0 +1,70 @@
+:- dynamic yes/1.
+/* List of all possible symptoms */
+symptom_list([
+    fever,
+    cough,
+    body_pain,
+    fatigue,
+    runny_nose,
+    sore_throat,
+    headache,
+    nausea,
+    sensitivity_to_light,
+    vomiting,
+    diarrhea
+]).
+
+/* Disease Rules */
+disease(flu) :-
+    yes(fever),
+    yes(cough),
+    yes(body_pain),
+    yes(fatigue).
+
+disease(common_cold) :-
+    yes(cough),
+    yes(runny_nose),
+    yes(sore_throat).
+
+disease(migraine) :-
+    yes(headache),
+    yes(nausea),
+    yes(sensitivity_to_light).
+
+disease(food_poisoning) :-
+    yes(vomiting),
+    yes(diarrhea),
+    yes(fever).
+/* FORWARD CHAINING STEP */
+/* Ask all symptoms first */
+ask_all_symptoms :-
+    symptom_list(List),
+    ask_symptoms(List).
+
+ask_symptoms([]).
+ask_symptoms([H|T]) :-
+    write('Do you have '), write(H), write('? (yes/no): '),
+    read(Response), nl,
+    (Response == yes -> assertz(yes(H)) ; true),
+    ask_symptoms(T).
+
+/* Diagnose after collecting data */
+diagnose :-
+    ask_all_symptoms,
+    findall(D, disease(D), Diseases),
+    show_result(Diseases),
+    undo.
+
+/* Show results */
+show_result([]) :-
+    write('No matching disease found.'), nl.
+
+show_result(Diseases) :-
+    write('Possible disease(s): '), write(Diseases), nl.
+
+/* Clear memory */
+
+undo :-
+    retract(yes(_)), fail.
+undo.
+
